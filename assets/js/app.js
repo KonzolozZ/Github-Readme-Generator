@@ -1,8 +1,8 @@
 /**
  * Alkalmazás Logika
  * Fájl helye: /assets/js/app.js
- * Funkció: Kezeli a fájlfeltöltést, GitHub betöltést, UI interakciókat és a generálást.
- * Módosítva: URL tisztítás és javított JSON hibakezelés.
+ * Funkció: Kezeli a fájlfeltöltést, GitHub betöltést, UI interakciókat, generálást és a reCAPTCHA kezelést.
+ * Módosítva: reCAPTCHA integráció a hívások előtt.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -44,6 +44,39 @@ document.addEventListener('DOMContentLoaded', () => {
         btnReset: getEl('btnReset')
     };
 
+    // --- reCAPTCHA Kezelés ---
+    let pendingCaptchaResolve = null;
+
+    // Globális callback amit a reCAPTCHA hív meg
+    window.onCaptchaSuccess = function(token) {
+        if (pendingCaptchaResolve) {
+            pendingCaptchaResolve(token);
+            pendingCaptchaResolve = null;
+        }
+        // Reseteljük a captchát, hogy újra használható legyen
+        if (typeof grecaptcha !== 'undefined') {
+            grecaptcha.reset();
+        }
+    };
+
+    // Függvény a captcha végrehajtására és a token megszerzésére
+    function getRecaptchaToken() {
+        return new Promise((resolve, reject) => {
+            if (typeof grecaptcha === 'undefined') {
+                reject("A reCAPTCHA nem töltődött be. Ellenőrizd az internetkapcsolatot.");
+                return;
+            }
+            
+            pendingCaptchaResolve = resolve;
+            try {
+                grecaptcha.execute();
+            } catch (e) {
+                pendingCaptchaResolve = null;
+                reject("Hiba a reCAPTCHA indításakor: " + e.message);
+            }
+        });
+    }
+
     // Ellenőrizzük, hogy a kritikus elemek megvannak-e
     if (!elements.fileInput || !elements.fileListSection) {
         console.error("Kritikus DOM elemek hiányoznak. Ellenőrizd az index.php szerkezetét.");
@@ -55,7 +88,6 @@ document.addEventListener('DOMContentLoaded', () => {
         let modalEl = document.getElementById('appErrorModal');
         const titleText = window.langData ? window.langData.error_title : "Error";
 
-        // Ha még nem létezik a modal a DOM-ban, létrehozzuk
         if (!modalEl) {
             const modalHTML = `
                 <div class="modal fade" id="appErrorModal" tabindex="-1" aria-hidden="true" style="z-index: 10000;">
@@ -81,42 +113,29 @@ document.addEventListener('DOMContentLoaded', () => {
             modalEl = document.getElementById('appErrorModal');
         }
 
-        // Tartalom frissítése
         const modalTitle = document.getElementById('appErrorTitle');
         const modalBody = document.getElementById('appErrorBody');
         
         if (modalTitle) modalTitle.textContent = titleText;
         if (modalBody) modalBody.textContent = message;
 
-        // Megjelenítés
         if (typeof bootstrap !== 'undefined') {
             const modal = new bootstrap.Modal(modalEl);
             modal.show();
         } else {
-            // Fallback
             alert(message);
         }
     }
 
-    // --- GitHub URL handling (Tisztítás beillesztéskor) ---
+    // --- GitHub URL handling ---
     if (elements.githubUrlInput) {
         elements.githubUrlInput.addEventListener('input', (e) => {
             let val = e.target.value;
-            // Ha a felhasználó beillesztett egy teljes URL-t (pl. https://github.com/user/repo)
-            // A UI-ban már van "https://" prefix, ezért le kell vágni.
-            
-            // 1. https:// vagy http:// levágása
             if (val.startsWith('https://')) {
                 val = val.substring(8);
             } else if (val.startsWith('http://')) {
                 val = val.substring(7);
             }
-            
-            // Ha most már úgy néz ki, hogy "github.com/...", azt is levághatnánk,
-            // de a placeholder szerint "github.com/user/repo" a várt formátum, 
-            // így a user/repo részre van szükségünk, de a backend kezeli a github.com-ot is.
-            // A kérés az volt, hogy "automatikusan vágja le a https:// előtagot".
-            
             if (val !== e.target.value) {
                 e.target.value = val;
             }
@@ -187,13 +206,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         showLoading(true, window.langData ? window.langData.processing : "Feldolgozás...");
 
-        // setTimeout használata, hogy a UI frissülhessen a nehéz művelet előtt
         setTimeout(async () => {
             try {
                 loadedFiles = [];
                 const filesArray = Array.from(fileList);
                 
-                // Szűrés
                 const relevantFiles = filesArray.filter(file => {
                     const path = (file.webkitRelativePath || file.name).replace(/\\/g, '/');
                     const isIgnored = IGNORED_PATHS.some(ignore => path.includes('/' + ignore + '/') || path.startsWith(ignore + '/'));
@@ -249,16 +266,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            showLoading(true, window.langData ? window.langData.generating : "Letöltés...");
-
             try {
+                // Captcha ellenőrzés indítása
+                showLoading(true, "Robot ellenőrzés...");
+                const token = await getRecaptchaToken();
+                
+                showLoading(true, window.langData ? window.langData.generating : "Letöltés...");
+
                 const response = await fetch('api/fetch_github.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url: url })
+                    body: JSON.stringify({ 
+                        url: url,
+                        recaptcha_token: token 
+                    })
                 });
 
-                // Először szövegként olvassuk ki, hogy lássuk a PHP hibát, ha nem JSON
                 const textResponse = await response.text();
                 
                 try {
@@ -271,9 +294,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         throw new Error(data.message || "Ismeretlen hiba történt.");
                     }
                 } catch (jsonError) {
-                    // Ha a JSON parse elhasal, valószínűleg PHP fatal error vagy warning került a kimenetre
                     console.error("Nem valid JSON válasz:", textResponse);
-                    // Levágjuk a hibaüzenetet, ha túl hosszú
                     const displayError = textResponse.length > 300 ? textResponse.substring(0, 300) + "..." : textResponse;
                     throw new Error("Szerver hiba (nem JSON válasz): " + displayError);
                 }
@@ -336,14 +357,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            showLoading(true, window.langData ? window.langData.generating : "Generálás...");
-            if (elements.fileListSection) elements.fileListSection.classList.add('d-none');
-
             try {
+                // Captcha ellenőrzés
+                showLoading(true, "Robot ellenőrzés...");
+                const token = await getRecaptchaToken();
+
+                showLoading(true, window.langData ? window.langData.generating : "Generálás...");
+                if (elements.fileListSection) elements.fileListSection.classList.add('d-none');
+
                 const response = await fetch('api/generate.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ files: loadedFiles })
+                    body: JSON.stringify({ 
+                        files: loadedFiles,
+                        recaptcha_token: token
+                    })
                 });
 
                 const textResponse = await response.text();
@@ -444,7 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = currentResultLang === 'hu' ? 'OLVASSEL.md' : 'README.md';
+            a.download = currentResultLang === 'hu' ? 'README-HU.md' : 'README.md';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -479,4 +507,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Utolsó módosítás: 2026. február 06. 16:30:00
+// Utolsó módosítás: 2026. február 06. 17:16:00

@@ -2,15 +2,15 @@
 /**
  * API Végpont: GitHub Letöltés
  * Fájl helye: /api/fetch_github.php
- * Funkció: GitHub URL alapján letölti a fájlokat és visszaadja a frontendnek.
+ * Funkció: GitHub URL alapján letölti a fájlokat, reCAPTCHA ellenőrzéssel.
  */
 
-// Kimenet pufferelés indítása, hogy elkapjuk a PHP warningokat
 ob_start();
 
 header('Content-Type: application/json');
 require_once '../config.php';
 require_once '../classes/GitHubService.php';
+require_once '../classes/RecaptchaService.php';
 
 try {
     writeLog("GitHub fetch API called.");
@@ -20,10 +20,17 @@ try {
     }
 
     $rawInput = file_get_contents('php://input');
-    writeLog("Raw input: " . $rawInput);
-
     $input = json_decode($rawInput, true);
 
+    // 1. reCAPTCHA Ellenőrzés
+    $recaptchaToken = $input['recaptcha_token'] ?? null;
+    $recaptchaService = new RecaptchaService(RECAPTCHA_SECRET_KEY);
+    
+    if (!$recaptchaService->verify($recaptchaToken)) {
+        throw new Exception("Robot ellenőrzés sikertelen (reCAPTCHA). Kérlek próbáld újra.");
+    }
+
+    // 2. Adatok feldolgozása
     if (!isset($input['url']) || empty($input['url'])) {
         throw new Exception("URL megadása kötelező.");
     }
@@ -36,7 +43,6 @@ try {
 
     writeLog("Fetch successful, file count: " . count($files));
 
-    // Puffer törlése és JSON küldése
     ob_clean();
     echo json_encode([
         'success' => true,
@@ -45,8 +51,6 @@ try {
 
 } catch (Exception $e) {
     writeLog("Error in fetch_github.php: " . $e->getMessage());
-    
-    // Puffer törlése és Hiba JSON küldése
     ob_clean();
     http_response_code(400); 
     echo json_encode([
@@ -55,4 +59,4 @@ try {
     ]);
 }
 
-// Utolsó módosítás: 2026. február 06. 16:30:00
+// Utolsó módosítás: 2026. február 06. 17:16:00

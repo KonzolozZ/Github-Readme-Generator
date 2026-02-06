@@ -6,13 +6,11 @@
  */
 
 // Hibakezelés beállítása fejlesztéshez (élesben kapcsoljuk ki, ha JSON API-t használunk, mert bezavarhat)
-// Itt most bekapcsolva hagyjuk, de a logba irányítjuk inkább
 ini_set('display_errors', 0); // Kikapcsoljuk a kimenetre írást
 ini_set('log_errors', 1); // Bekapcsoljuk a fájlba logolást
 error_reporting(E_ALL);
 
 // .env fájl betöltése manuálisan (külső könyvtár nélkül)
-// Ez azért szükséges, mert a PHP natívan nem olvassa be a .env fájlt, és nincs Composer használat.
 $envFile = __DIR__ . '/.env';
 if (file_exists($envFile)) {
     $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
@@ -45,12 +43,13 @@ if (file_exists($envFile)) {
     }
 }
 
-// API Kulcsok - Most már a környezeti változóból olvassa, amit a .env-ből töltöttünk be
-// Ha nincs .env vagy nincs benne a kulcs, akkor fallback érték
+// API Kulcsok
 define('GEMINI_API_KEY', getenv('GEMINI_API_KEY') ?: 'YOUR_GEMINI_API_KEY_HERE');
+define('RECAPTCHA_SITE_KEY', getenv('RECAPTCHA_SITE_KEY') ?: '');
+define('RECAPTCHA_SECRET_KEY', getenv('RECAPTCHA_SECRET_KEY') ?: '');
 
 // Alkalmazás verzió
-define('APP_VERSION', '1.1.2');
+define('APP_VERSION', '1.1.5');
 
 // Időzóna
 date_default_timezone_set('Europe/Budapest');
@@ -72,4 +71,4 @@ function writeLog($message) {
     file_put_contents($logFile, "[$timestamp] $message" . PHP_EOL, FILE_APPEND);
 }
 
-// Utolsó módosítás: 2026. február 06. 16:30:00
+// Utolsó módosítás: 2026. február 06. 17:16:00

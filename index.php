@@ -2,7 +2,7 @@
 /**
  * Főoldal
  * Fájl helye: /index.php
- * Funkció: A felhasználói felület megjelenítése nyelvválasztással.
+ * Funkció: A felhasználói felület megjelenítése nyelvválasztással. reCAPTCHA integráció.
  */
 
 require_once 'config.php';
@@ -26,9 +26,14 @@ $t = $lang[$currentLang];
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Fira+Code&display=swap" rel="stylesheet">
     <!-- Custom CSS -->
     <link href="assets/css/style.css" rel="stylesheet">
+    
+    <!-- Google reCAPTCHA -->
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+
     <!-- JavaScript adatok átadása -->
     <script>
         window.langData = <?= json_encode($t) ?>;
+        window.recaptchaSiteKey = "<?= RECAPTCHA_SITE_KEY ?>";
     </script>
 </head>
 <body>
@@ -181,6 +186,9 @@ $t = $lang[$currentLang];
                 </div>
             </div>
 
+            <!-- Invisible reCAPTCHA Container -->
+            <div id="recaptcha-container" class="g-recaptcha" data-sitekey="<?= RECAPTCHA_SITE_KEY ?>" data-callback="onCaptchaSuccess" data-size="invisible"></div>
+
         </main>
 
         <!-- Footer -->
@@ -196,4 +204,4 @@ $t = $lang[$currentLang];
     <script src="assets/js/app.js"></script>
 </body>
 </html>
-<!-- Utolsó módosítás: 2026. február 06. 15:07:00 -->
+<!-- Utolsó módosítás: 2026. február 06. 17:16:00 -->

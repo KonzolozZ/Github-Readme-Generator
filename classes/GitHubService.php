@@ -3,7 +3,7 @@
  * GitHub Service Osztály
  * Fájl helye: /classes/GitHubService.php
  * Funkció: Fájlok lekérése és feldolgozása GitHub repóból.
- * Verzió: 1.1.0 - Formázás egységesítése a mappás feltöltéssel.
+ * Verzió: 1.1.1 - Repó URL átadása virtuális fájlban.
  */
 
 declare(strict_types=1);
@@ -101,7 +101,6 @@ class GitHubService
         }
 
         // Hozzáadunk egy virtuális fájlt a teljes struktúrával
-        // FONTOS: Mostantól listajeles (- ) formátumban, hogy az AI ugyanazt lássa, mint mappás feltöltésnél!
         if (count($allFiles) > 0) {
             $paths = array_column($allFiles, 'path');
             
@@ -122,6 +121,13 @@ class GitHubService
                 'content' => implode("\n", $formattedPaths)
             ];
         }
+
+        // ÚJ: Hozzáadjuk a pontos repó URL-t egy virtuális fájlban, hogy a GeminiService biztosan tudja
+        $processedFiles[] = [
+            'name' => '__GITHUB_URL__',
+            'path' => '__GITHUB_URL__',
+            'content' => "https://github.com/$owner/$repo"
+        ];
 
         return $processedFiles;
     }
@@ -197,4 +203,4 @@ class GitHubService
     }
 }
 
-// Utolsó módosítás: 2026. február 06. 17:00:00
+// Utolsó módosítás: 2026. február 06. 18:30:00
