@@ -14,7 +14,7 @@ return [
         'drag_drop' => 'Húzd ide a projekt mappádat',
         'or_click' => 'vagy kattints a tallózáshoz',
         'select_folder' => 'Mappa kiválasztása',
-        'processing' => 'A fájlok feldolgozása biztonságosan, a böngésződben történik.',
+        'processing' => 'A fájlok nem kerülnek tárolásra a szerveren, csak az AI elemzéséhez kerülnek elküldésre.',
         'enter_url' => 'GitHub Repó URL megadása',
         'example_url' => 'Pl: https://github.com/facebook/react',
         'fetch_btn' => 'Elemzés Indítása',
@@ -42,7 +42,7 @@ return [
         'drag_drop' => 'Drag & drop your project folder here',
         'or_click' => 'or click to browse',
         'select_folder' => 'Select Folder',
-        'processing' => 'Files are processed securely in your browser.',
+        'processing' => 'Files are not stored on the server, they are only sent for AI analysis.',
         'enter_url' => 'Enter GitHub Repository URL',
         'example_url' => 'Ex: https://github.com/facebook/react',
         'fetch_btn' => 'Start Analysis',
@@ -64,4 +64,4 @@ return [
     ]
 ];
 
-// Utolsó módosítás: 2026. február 06. 15:05:00
+// Utolsó módosítás: 2026. február 06. 17:40:00
